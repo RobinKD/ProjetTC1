@@ -1,2 +1,4 @@
 # ProjetTC1
-Challenge Otto Kaggle
+## Challenge Otto Kaggle
+
+Disponible à https://www.kaggle.com/c/otto-group-product-classification-challenge
