@@ -6,7 +6,7 @@ Disponible à https://www.kaggle.com/c/otto-group-product-classification-challen
 
 ## Scores soumission
 ### Robin
-Rien
+0.90
 
 ### Jiaxin
-Rien
+0.56
