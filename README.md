@@ -9,4 +9,4 @@ Disponible à https://www.kaggle.com/c/otto-group-product-classification-challen
 0.47
 
 ### Jiaxin
-0.48
+0.44
