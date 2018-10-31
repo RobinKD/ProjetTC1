@@ -11,16 +11,17 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 
 def classif_randomForest(trainX, trainy, validX, validy, testX, name='../randomForest_submission.csv'):
-    model = RandomForestClassifier(n_estimators=120, n_jobs=-1, oob_score=True)
-    calibrated_model = CalibratedClassifierCV(model, 'isotonic')
+    model = RandomForestClassifier(n_estimators=500, n_jobs=-1, oob_score=True)
+    calibrated_model = CalibratedClassifierCV(model, 'isotonic', 5)
     calibrated_model.fit(trainX, trainy)
     print("Model trained")
 
 
     #     pred_valid_normal = model.predict(validX)
-    pred_valid = calibrated_model.predict_proba(validX)
-    print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
-#     print(mtc.accuracy_score(validy, pred_valid_normal))
+    if not len(validy) == 0:
+        pred_valid = calibrated_model.predict_proba(validX)
+        print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
+        #     print(mtc.accuracy_score(validy, pred_valid_normal))
 
     testProbas = calibrated_model.predict_proba(testX)
     saveResult(testProbas, name)
