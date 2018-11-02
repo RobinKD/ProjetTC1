@@ -82,7 +82,7 @@ def averaged_XGB_RF(model_RF, model_XGB):
     valid_RF = calibrated_model.predict_proba(validX)
     valid_XGB = model_XGB.predict_proba(validX)
 
-    res_RF = model_RF.predict_proba(testX)
+    res_RF = calibrated_model.predict_proba(testX)
     res_XGB = model_XGB.predict_proba(testX)
     for x in [y / 10.0 for y in range(1, 10)]:
         combres = (x * res_RF + (1 - x) * res_XGB) / 2
