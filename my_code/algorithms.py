@@ -3,88 +3,108 @@ import data_extraction as dex
 import data_engeneering as den
 from res_treatment import *
 
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.svm import SVC
+import xgboost as xgb
+
+
 trainX, trainy = dex.get_train()
 validX, validy = dex.get_valid()
 testX = dex.get_test()
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.calibration import CalibratedClassifierCV, calibration_curve
-
-def classif_randomForest(trainX, trainy, validX, validy, testX, name='../randomForest_submission.csv'):
-    model = RandomForestClassifier(n_estimators=500, n_jobs=-1, oob_score=True)
+def classif_randomForest(model, name='../randomForest_submission.csv'):
+    """
+    Train a calibrated RF, test it on valid set if it exists,
+    and save probabilities of testset in a csv file for
+    submission
+    """
     calibrated_model = CalibratedClassifierCV(model, 'isotonic', 5)
     calibrated_model.fit(trainX, trainy)
     print("Model trained")
 
-
-    #     pred_valid_normal = model.predict(validX)
     if not len(validy) == 0:
         pred_valid = calibrated_model.predict_proba(validX)
         print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
-        #     print(mtc.accuracy_score(validy, pred_valid_normal))
 
     testProbas = calibrated_model.predict_proba(testX)
     saveResult(testProbas, name)
 
-from sklearn.svm import SVC
 
-def classif_SVM(trainX, trainy, validX, validy, testX, name='../svm_submission.csv'):
+def classif_SVM(name='../svm_submission.csv'):
+    """
+    Train a SVM, test it on valid set if it exists,
+    and save probabilities of testset in a csv file for
+    submission
+    """
     model = SVC(probability=True)
     model.fit(trainX, trainy)
     print("Model trained")
 
-#     pred_valid_normal = model.predict(validX)
-    pred_valid = model.predict_proba(validX)
-    print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
-#     print(mtc.accuracy_score(validy, pred_valid_normal))
+    if not len(validy) == 0:
+        pred_valid = model.predict_proba(validX)
+        print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
+
+    testProbas = model.predict_proba(testX)
+    saveResult(testProbas, name)
+
+def classif_xgboost(model, name='../xgboost_submission.csv'):
+    """
+    Train an XGBClassifier, test it on valid set if it exists,
+    and save probabilities of testset in a csv file for
+    submission
+    """
+    print("Creation model")
+    model.fit(trainX, trainy, eval_metric=evaluation)
+    print("Model trained")
+
+
+    if not len(validy) == 0:
+        pred_valid = model.predict_proba(validX)
+        print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
 
     testProbas = model.predict_proba(testX)
     saveResult(testProbas, name)
 
 
-def test_RF(trainX, trainy, validX, validy):
-    eval_valid_nbTree = [[],[]]
-    eval_valid_nbFeature = [[],[]]
-    for i in range(100, 400, 20):
-        nb_trees = np.random.randint(i, i + 20)
-        model = RandomForestClassifier(n_estimators=nb_trees, n_jobs=-1)
-        model.fit(trainX, trainy)
-        pred_valid = model.predict_proba(validX)
-        eval_valid_nbTree[0].append(nb_trees)
-        eval_valid_nbTree[1].append(evaluation(validy, pred_valid))
-    for j in range(5, 20, 2):
-        nb_feat = np.random.randint(j, j + 2)
-        model = RandomForestClassifier(n_estimators=50, n_jobs=-1, max_features=nb_feat)
-        model.fit(trainX, trainy)
-        pred_valid = model.predict_proba(validX)
-        eval_valid_nbFeature[0].append(nb_feat)
-        eval_valid_nbFeature[1].append(evaluation(validy, pred_valid))
-    return eval_valid_nbTree, eval_valid_nbFeature
+def averaged_XGB_RF(model_RF, model_XGB):
+    """
+    A try to average RF model and XGB model with different weights
+    to see if it can be better
+    """
+    calibrated_model = CalibratedClassifierCV(model_RF, 'isotonic', 5)
+    calibrated_model.fit(trainX, trainy)
+    print("Calibrated RF trained")
 
-import matplotlib.pyplot as plt
+    model_XGB.fit(trainX, trainy, eval_metric=evaluation)
+    print("XGB model trained")
 
-def plot_testRF(score_nbTree, score_nbFeat):
-    f1 = plt.figure(1)
-    plt.plot(score_tree[0], score_tree[1], "r", label='train (all samples)')
-    plt.title("Score different parameters RF")
-    plt.xlabel("Value of parameter")
-    plt.ylabel("Evaluation on valid set")
-    plt.legend()
-    plt.ylim((0, 1))
-    f1.show()
+    valid_RF = calibrated_model.predict_proba(validX)
+    valid_XGB = model_XGB.predict_proba(validX)
 
-    f2 = plt.figure(2)
-    plt.plot(score_maxFeat[0], score_maxFeat[1], "g", label='valid (all samples)')
-    plt.title("Score different parameters RF")
-    plt.xlabel("Value of parameter")
-    plt.ylabel("Evaluation on valid set")
-    plt.legend()
-    plt.ylim((0, 1))
-    f2.show()
+    res_RF = model_RF.predict_proba(testX)
+    res_XGB = model_XGB.predict_proba(testX)
+    for x in [y / 10.0 for y in range(1, 10)]:
+        combres = (x * res_RF + (1 - x) * res_XGB) / 2
+        if not len(validy) == 0:
+            pred_valid = (x * valid_RF + (1 - x) * valid_XGB) / 2
+            print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
+        saveResult(combres, "../combined_{.1}RF_{.1}XGB.csv".format(x, 1 - x))
 
-    input()
 
-classif_randomForest(trainX, trainy, validX, validy, testX)
-# classif_SVM(trainX, trainy, validX, validy, testX)
-# score_tree, score_maxFeat = test_RF(trainX, trainy, validX, validy)
-# plot_testRF(score_tree, score_maxFeat)
+
+RF_model = RandomForestClassifier(n_estimators=350, max_features=15, n_jobs=-1, oob_score=True,
+                                  random_state=5)
+# XGB Jiaxin's parameters
+# XGB_model = xgb.XGBClassifier(learning_rate=0.01, n_estimators=700, gamma=0, max_depth=7,
+#                               min_child_weight=3, subsample=0.8, colsample_bytree=0.8,
+#                               n_jobs=100, random_state=27, objective='multi:softprob')
+XGB_model = xgb.XGBClassifier(max_depth=15, n_estimators=800, n_jobs=-1, random_state=5,
+                              objective='multi:softprob', learning_rate=0.1, reg_alpha=0.003,
+                              min_child_weight=3, subsample=0.8, gamma=0)
+
+# res1 = classif_randomForest(RF_model)
+# res2 = classif_xgboost(XGB_model)
+
+averaged_XGB_RF(RF_model, XGB_model)
+
