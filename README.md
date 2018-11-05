@@ -6,7 +6,7 @@ Disponible à https://www.kaggle.com/c/otto-group-product-classification-challen
 
 ## Scores soumission
 ### Robin
-0.47
+0.439 with mycode
 
 0.446 avec calibrated XGB (de Jiaxin)
 ### Jiaxin
