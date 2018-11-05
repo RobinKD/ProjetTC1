@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 
 X, y = dataset[:, :-1], dataset[:, -1:]
 
-trainX, validX, trainy, validy = train_test_split(X, y, test_size=0.1, random_state=5)
+trainX, validX, trainy, validy = train_test_split(X, y, test_size=0.0, random_state=5)
 trainy, validy = trainy.ravel(), validy.ravel()
 
 def preproc(data):

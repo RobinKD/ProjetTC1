@@ -12,6 +12,7 @@ def evaluation(label,pred_label):
     logloss = 0.0
     for i in range(num):
         p = max(min(pred_label[i][label[i]],1-10**(-15)),10**(-15))
+        p /= np.sum(pred_label[i])
         logloss += np.log(p)
     logloss = -logloss/num
     return logloss

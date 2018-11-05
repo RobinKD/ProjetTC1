@@ -7,7 +7,11 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
+
+import warnings
+warnings.filterwarnings("ignore")
 
 trainX, trainy = dex.get_train()
 validX, validy = dex.get_valid()
@@ -147,6 +151,55 @@ def test_xgboost():
     res.append([x, y, "Tuning XGB min_child_weight"])
     return res
 
+def test_MLP():
+    res = []
+    x, y = [], []
+    print("Tuning max_iter")
+    for i in range(2, 20, 2):
+        model = MLPClassifier(max_iter=i)
+        model.fit(trainX, trainy)
+        pred_valid = model.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning max_iter"])
+    x, y = [], []
+    print("Tuning hidden layers")
+    for i in [(100,), (75, ),(50,), (30,), (20,)]:
+        model = MLPClassifier(hidden_layer_sizes=i, max_iter=50)
+        model.fit(trainX, trainy)
+        pred_valid = model.predict_proba(validX)
+        x.append(i[0])
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning hidden layers"])
+    x, y = [], []
+    print("Tuning regularization")
+    for i in [j / 10 ** 6 for j in [1, 5, 10, 50, 100]]:
+        model = MLPClassifier(max_iter=50, alpha=i)
+        model.fit(trainX, trainy)
+        pred_valid = model.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning regularization"])
+    x, y = [], []
+    print("Tuning learning rate init")
+    for i in [j / 10**4 for j in [1, 5, 10, 50, 100]]:
+        model = MLPClassifier(max_iter=50, learning_rate_init=i)
+        model.fit(trainX, trainy)
+        pred_valid = model.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning learning rate init"])
+    x, y = [], []
+    print("Tuning tol")
+    for i in [j / 10 ** 4 for j in [1, 5, 10, 50, 100]]:
+        model = MLPClassifier(max_iter=50, tol=i)
+        model.fit(trainX, trainy)
+        pred_valid = model.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning tol"])
+    return res
+
 def plot_tuning(data):
     for i, x in enumerate(data):
         f = plt.figure(i)
@@ -160,4 +213,5 @@ def plot_tuning(data):
     input()
 
 # plot_tuning(test_RF())
-plot_tuning(test_xgboost())
+# plot_tuning(test_xgboost())
+plot_tuning(test_MLP())
