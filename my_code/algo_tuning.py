@@ -4,7 +4,7 @@ import data_engeneering as den
 from res_treatment import *
 import matplotlib.pyplot as plt
 
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, ExtraTreesClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
@@ -200,6 +200,133 @@ def test_MLP():
     res.append([x, y, "Tuning tol"])
     return res
 
+def test_Adaboost():
+    res = []
+    x, y = [], []
+    print("Test not calibrated")
+    for i in range(10, 410, 50):
+        model = AdaBoostClassifier(n_estimators=i)
+        model.fit(trainX, trainy)
+        pred_valid = model.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Test not calibrated"])
+    x, y = [], []
+    print("Test calibrated")
+    for i in range(10, 410, 50):
+        model = AdaBoostClassifier(n_estimators=i)
+        calib = CalibratedClassifierCV(model, 'isotonic', 2)
+        calib.fit(trainX, trainy)
+        pred_valid = calib.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Test calibrated"])
+    x, y = [], []
+    print("Tuning n_estimators")
+    for i in range(10, 100, 10):
+        model = AdaBoostClassifier(n_estimators=i)
+        calib = CalibratedClassifierCV(model, 'isotonic', 2)
+        calib.fit(trainX, trainy)
+        pred_valid = calib.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning n_estimators"])
+    x, y = [], []
+    print("Tuning learning rate")
+    for i in [j / 10 for j in range(1, 11)]:
+        model = AdaBoostClassifier(learning_rate=i)
+        calib = CalibratedClassifierCV(model, 'isotonic', 2)
+        calib.fit(trainX, trainy)
+        pred_valid = calib.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning learning rate"])
+    x, y = [], []
+    print("Tuning n_estimators & learning rate")
+    for i in range(50, 90, 5):
+        for j in [k / 20 for k in range(2, 6)]:
+            model = AdaBoostClassifier(n_estimators=i, learning_rate=j)
+            calib = CalibratedClassifierCV(model, 'isotonic', 3)
+            calib.fit(trainX, trainy)
+            pred_valid = calib.predict_proba(validX)
+            x.append(str(i) + str(j))
+            y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning n_estimators & learning rate"])
+    return res
+
+def test_extratree():
+    res = []
+    # x, y = [], []
+    # print("Test not calibrated")
+    # for i in range(10, 210, 50):
+    #     model = ExtraTreesClassifier(n_estimators=i)
+    #     model.fit(trainX, trainy)
+    #     pred_valid = model.predict_proba(validX)
+    #     x.append(i)
+    #     y.append(evaluation(validy, pred_valid))
+    # res.append([x, y, "Test not calibrated"])
+    # x, y = [], []
+    # print("Test calibrated")
+    # for i in range(10, 210, 50):
+    #     model = ExtraTreesClassifier(n_estimators=i)
+    #     calib = CalibratedClassifierCV(model, 'isotonic', 3)
+    #     calib.fit(trainX, trainy)
+    #     pred_valid = calib.predict_proba(validX)
+    #     x.append(i)
+    #     y.append(evaluation(validy, pred_valid))
+    # res.append([x, y, "Test calibrated"])
+    x, y = [], []
+    print("Tuning n_estimators")
+    for i in range(210, 510, 50):
+        model = ExtraTreesClassifier(n_estimators=i)
+        calib = CalibratedClassifierCV(model, 'isotonic', 3)
+        calib.fit(trainX, trainy)
+        pred_valid = calib.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning n_estimators"])
+    x, y = [], []
+    print("Tuning max_depth")
+    for i in [1, 3, 5, 10, 15, 25, None]:
+        model = ExtraTreesClassifier(max_depth=i)
+        calib = CalibratedClassifierCV(model, 'isotonic', 3)
+        calib.fit(trainX, trainy)
+        pred_valid = calib.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning max_depth"])
+    x, y = [], []
+    print("Tuning max_features")
+    for i in [1, 3, 5, 8, 15, 30, 50, 93]:
+        model = ExtraTreesClassifier(max_features=i)
+        calib = CalibratedClassifierCV(model, 'isotonic', 3)
+        calib.fit(trainX, trainy)
+        pred_valid = calib.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning max_features"])
+    x, y = [], []
+    print("Tuning boostrap")
+    for i in [True, False]:
+        model = ExtraTreesClassifier(bootstrap=i)
+        calib = CalibratedClassifierCV(model, 'isotonic', 3)
+        calib.fit(trainX, trainy)
+        pred_valid = calib.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning boostrap"])
+    x, y = [], []
+    print("Tuning oob")
+    for i in [True, False]:
+        model = ExtraTreesClassifier(oob_score=i, bootstrap=True)
+        calib = CalibratedClassifierCV(model, 'isotonic', 3)
+        calib.fit(trainX, trainy)
+        pred_valid = calib.predict_proba(validX)
+        x.append(i)
+        y.append(evaluation(validy, pred_valid))
+    res.append([x, y, "Tuning oob"])
+    return res
+
 def plot_tuning(data):
     for i, x in enumerate(data):
         f = plt.figure(i)
@@ -214,4 +341,6 @@ def plot_tuning(data):
 
 # plot_tuning(test_RF())
 # plot_tuning(test_xgboost())
-plot_tuning(test_MLP())
+# plot_tuning(test_MLP())
+# plot_tuning(test_Adaboost())
+plot_tuning(test_extratree())
