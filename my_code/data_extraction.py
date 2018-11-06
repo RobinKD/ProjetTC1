@@ -7,7 +7,7 @@ dataset = panda_dataset.values[:,1:]
 testX = panda_testset.values[:, 1:]
 
 import sklearn.preprocessing as prep
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 
 
 X, y = dataset[:, :-1], dataset[:, -1:]
@@ -20,7 +20,7 @@ def preproc(data):
     To normalize and scale dataset given in parameters
     """
     d = np.array(data, dtype='float64')
-    d = prep.normalize(d, norm='l2', axis=0)
+    # d = prep.normalize(d, norm='l2', axis=0)
     d = prep.scale(d, axis=0)
     return d
 

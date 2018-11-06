@@ -86,7 +86,7 @@ def classif_MLP(model, name='../MLP_submission.csv'):
     saveResult(testProbas, name)
 
 
-def averaged_2models(model1, model2):
+def averaged_2models(model1, model2, sub1, sub2):
     """
     A try to average two models with different weights
     to see if it can be better
@@ -111,15 +111,15 @@ def averaged_2models(model1, model2):
         valid2 = calib2.predict_proba(validX)
 
     res1 = calib1.predict_proba(testX)
-    saveResult(res1, "../randomForest_submission.csv")
+    saveResult(res1, "../"+sub1+"_submission.csv")
     res2 = calib2.predict_proba(testX)
-    saveResult(res2, "../XGB_submission.csv")
-    for x in [y / 10.0 for y in range(1, 11)]:
+    saveResult(res2, "../"+sub2+"_submission.csv")
+    for x in [y / 10.0 for y in range(1, 10)]:
         combres = (x * res1 + (1 - x) * res2)
         if not len(validy) == 0:
             pred_valid = (x * valid1 + (1 - x) * valid2)
             print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
-        saveResult(combres, "../combined_csv/combined_{:1.2f}RF_{:1.2f}XGB.csv".format(x, 1 - x))
+        saveResult(combres, "../combined_csv/combined_{:1.2f}{}_{:1.2f}{}.csv".format(x, sub1, 1 - x, sub2))
 
 def averaged_3models(model_RF, model_XGB, model_MLP):
     """
@@ -163,7 +163,7 @@ RF_model = RandomForestClassifier(n_estimators=350, max_features=15, oob_score=T
 # XGB_model = xgb.XGBClassifier(learning_rate=0.01, n_estimators=700, gamma=0, max_depth=7,
 #                               min_child_weight=3, subsample=0.8, colsample_bytree=0.8,
 #                               n_jobs=100, random_state=27, objective='multi:softprob')
-XGB_model = xgb.XGBClassifier(max_depth=7, n_estimators=800, random_state=5,
+XGB_model = xgb.XGBClassifier(max_depth=7, n_estimators=700, random_state=5,
                               objective='multi:softprob', learning_rate=0.1, reg_alpha=0.003,
                               min_child_weight=3, subsample=0.8, gamma=0)
 
@@ -178,8 +178,13 @@ ET_model = ExtraTreesClassifier(n_estimators=350)
 # classif_xgboost(XGB_model)
 # classif_MLP(MLP_model)
 
-averaged_2models(RF_model, XGB_model)
-# averaged_2models(RF_model, MLP_model)
-# averaged_2models(RF_model, Adab_model)
-# averaged_2models(RF_model, ET_model)
+# averaged_2models(RF_model, XGB_model, "RF", "XGB") # Best 0.3 RF 0.7XGB --> 0.447
+# averaged_2models(RF_model, MLP_model, "RF", "MLP") # Best 0.7 RF 0.3 MLP --> 0.493
+# averaged_2models(RF_model, Adab_model, "RF", "AdaBoost") # Best 0 Adaboost
+# averaged_2models(RF_model, ET_model, "RF", "Extra_tree") # best 0.2 RF 0.8 Extra_tree --> 0.482
+
+# averaged_2models(XGB_model, ET_model, "XGB", "ET") # Best with 0.7 XGB et 0.3 ET --> 0.443
+# averaged_2models(XGB_model, MLP_model, "XGB", "MLP") # Best with 0.8 XGB et 0.2 MLP --> 0.45
+averaged_2models(MLP_model, ET_model, "MLP", "ET") # Best with 0 MLP
+
 # averaged_3models(RF_model, XGB_model, MLP_model)
