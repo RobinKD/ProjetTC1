@@ -2,8 +2,9 @@ import numpy as np
 import data_extraction as dex
 import data_engeneering as den
 from res_treatment import *
+import pandas as pd
 
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, ExtraTreesClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, ExtraTreesClassifier, BaggingClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
@@ -12,11 +13,7 @@ import xgboost as xgb
 import warnings
 warnings.filterwarnings("ignore")
 
-trainX, trainy = dex.get_train()
-validX, validy = dex.get_valid()
-testX = dex.get_test()
-
-def classif_randomForest(model, name='../randomForest_submission.csv'):
+def classif_randomForest(trainX, validX, trainy, validy, model, name='../randomForest_submission.csv'):
     """
     Train a calibrated RF, test it on valid set if it exists,
     and save probabilities of testset in a csv file for
@@ -29,12 +26,13 @@ def classif_randomForest(model, name='../randomForest_submission.csv'):
     if not len(validy) == 0:
         pred_valid = calibrated_model.predict_proba(validX)
         print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
+        saveResult(pred_valid, name[-14:] + "valid.csv")
 
     testProbas = calibrated_model.predict_proba(testX)
     saveResult(testProbas, name)
 
 
-def classif_SVM(name='../svm_submission.csv'):
+def classif_SVM(trainX, validX, trainy, validy, name='../svm_submission.csv'):
     """
     Train a SVM, test it on valid set if it exists,
     and save probabilities of testset in a csv file for
@@ -47,144 +45,191 @@ def classif_SVM(name='../svm_submission.csv'):
     if not len(validy) == 0:
         pred_valid = model.predict_proba(validX)
         print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
+        saveResult(pred_valid, name[-14:] + "valid.csv")
 
     testProbas = model.predict_proba(testX)
     saveResult(testProbas, name)
 
-def classif_xgboost(model, name='../xgboost_submission.csv'):
+def classif_xgboost(trainX, validX, trainy, validy, model, name='../xgboost_submission.csv'):
     """
     Train an XGBClassifier, test it on valid set if it exists,
     and save probabilities of testset in a csv file for
     submission
     """
     print("Creation model")
-    model.fit(trainX, trainy, eval_metric=evaluation)
+    calibrated_model = CalibratedClassifierCV(model, 'isotonic', 2)
+    calibrated_model.fit(trainX, trainy)
     print("Model trained")
 
 
     if not len(validy) == 0:
-        pred_valid = model.predict_proba(validX)
+        pred_valid = calibrated_model.predict_proba(validX)
         print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
+        saveResult(pred_valid, name[-14:] + "valid.csv")
 
-    testProbas = model.predict_proba(testX)
+    testProbas = calibrated_model.predict_proba(testX)
     saveResult(testProbas, name)
 
-def classif_MLP(model, name='../MLP_submission.csv'):
+def classif_MLP(trainX, validX, trainy, validy, model, name='../MLP_submission.csv'):
     """
-    Train a calibrated RF, test it on valid set if it exists,
+    Train a MLPClassifier, test it on valid set if it exists,
     and save probabilities of testset in a csv file for
     submission
     """
-    model.fit(trainX, trainy)
+    bagmodel = BaggingClassifier(model)
+    bagmodel.fit(trainX, trainy)
     print("Model trained")
 
     if not len(validy) == 0:
-        pred_valid = model.predict_proba(validX)
+        pred_valid = bagmodel.predict_proba(validX)
         print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
+        saveResult(pred_valid, name[-14:] + "valid.csv")
 
-    testProbas = model.predict_proba(testX)
+    testProbas = bagmodel.predict_proba(testX)
+    saveResult(testProbas, name)
+
+def classif_ET(trainX, validX, trainy, validy, model, name='../ET_submission.csv'):
+    """
+    Train an ExtraTreesClassifier, test it on valid set if it exists,
+    and save probabilities of testset in a csv file for
+    submission
+    """
+    calibrated_model = CalibratedClassifierCV(model, 'isotonic', 5)
+    calibrated_model.fit(trainX, trainy)
+    print("Model trained")
+
+    if not len(validy) == 0:
+        pred_valid = calibrated_model.predict_proba(validX)
+        print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
+        saveResult(pred_valid, name[-14:] + "valid.csv")
+
+    testProbas = calibrated_model.predict_proba(testX)
     saveResult(testProbas, name)
 
 
-def averaged_2models(model1, model2, sub1, sub2):
+def averaged_2models(trainX, validX, trainy, validy, model1, model2, sub1, sub2):
     """
     A try to average two models with different weights
-    to see if it can be better
+    to see if it can be better, by grid search
+    sub1 and sub2 are parameters to change name of submission file
     """
     if isinstance(model1, MLPClassifier) or isinstance(model1, xgb.XGBClassifier):
-        calib1 = model1
+        calib1 = BaggingClassifier(model1)
     else:
-        calib1 = CalibratedClassifierCV(model1, 'isotonic', 2)
+        calib1 = CalibratedClassifierCV(model1, 'isotonic', 3)
 
     calib1.fit(trainX, trainy)
     print("model1 trained")
 
     if isinstance(model2, MLPClassifier) or isinstance(model2, xgb.XGBClassifier):
-        calib2 = model2
+        calib2 = BaggingClassifier(model2)
     else:
-        calib2 = CalibratedClassifierCV(model2, 'isotonic', 2)
+        calib2 = CalibratedClassifierCV(model2, 'isotonic', 3)
     calib2.fit(trainX, trainy)
     print("model2 trained")
 
     if not len(validy) == 0:
         valid1 = calib1.predict_proba(validX)
+        print("Evaluation model1(kaggle) of validation set :", evaluation(validy, valid1))
         valid2 = calib2.predict_proba(validX)
+        print("Evaluation model2(kaggle) of validation set :", evaluation(validy, valid2))
 
     res1 = calib1.predict_proba(testX)
     saveResult(res1, "../"+sub1+"_submission.csv")
     res2 = calib2.predict_proba(testX)
     saveResult(res2, "../"+sub2+"_submission.csv")
-    for x in [y / 10.0 for y in range(1, 10)]:
+    for x in [y / 10.0 for y in range(1,10)]:
         combres = (x * res1 + (1 - x) * res2)
         if not len(validy) == 0:
             pred_valid = (x * valid1 + (1 - x) * valid2)
             print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
         saveResult(combres, "../combined_csv/combined_{:1.2f}{}_{:1.2f}{}.csv".format(x, sub1, 1 - x, sub2))
 
-def averaged_3models(model_RF, model_XGB, model_MLP):
+def run_single_models(trainX, validX, trainy, validy):
     """
-    A try to average 3 models with different weights
-    to see if it can be better
+    Run submit functions for single models
+    Not SVM because results are too bad
     """
-    calibrated_model = CalibratedClassifierCV(model_RF, 'isotonic', 3)
-    calibrated_model.fit(trainX, trainy)
-    print("Calibrated RF trained")
+    classif_randomForest(trainX, validX, trainy, validy, RF_model)
+    classif_xgboost(trainX, validX, trainy, validy, XGB_model)
+    classif_MLP(trainX, validX, trainy, validy, MLP_model)
+    classif_ET(trainX, validX, trainy, validy, ET_model)
 
-    calib_XGB = CalibratedClassifierCV(model_XGB, 'isotonic', 2)
-    calib_XGB.fit(trainX, trainy, eval_metric=evaluation)
-    print("XGB model trained")
+def averaging_models_by_two(trainX, validX, trainy, validy):
+    """
+    Run all combinations of 2 models for ensemble averaging
+    Best to use averaging_probas to avoid retraining existing models
+    """
+    averaged_2models(trainX, validX, trainy, validy, RF_model, XGB_model, "RF", "XGB")
+    # Best with 0.3 RF 0.7XGB --> 0.447
+    averaged_2models(trainX, validX, trainy, validy, RF_model, MLP_model, "RF", "MLP")
+    # Best with 0.4 RF 0.6 MLP --> 0.469
+    averaged_2models(trainX, validX, trainy, validy, RF_model, ET_model, "RF", "Extra_tree")
+    # best 0.2 RF 0.8 Extra_tree --> 0.482
+    averaged_2models(trainX, validX, trainy, validy, XGB_model, ET_model, "XGB", "ET")
+    # Best with 0.7 XGB et 0.3 ET --> 0.443
+    averaged_2models(trainX, validX, trainy, validy, XGB_model, MLP_model, "XGB", "MLP")
+    # Best with 0.8 XGB et 0.2 MLP --> 0.45
+    averaged_2models(trainX, validX, trainy, validy, MLP_model, ET_model, "MLP", "ET")
+    # Best with 0.4 MLP et 0.6 ET --> 0.46
 
-    model_MLP.fit(trainX, trainy)
-    print("MLP model trained")
+def averaging_probas(validy=[], probvalid=[], numtry=100, probtest=[], weightlist=[], csv_submit="../averaged_probas.csv"):
+    """
+    Run a stochastic search of good values for ensemble averaging if no weights provided,
+    and compute logloss on validation set
+    else save probabilities of the result
+    Return sorted list of tuple (logloss on validset, list of weights)
+    or [] if not corect list of arguments or weightlist and probtest given
+    """
+    if weightlist and probtest:
+        weights = weightlist
+        res = np.sum(probtest * weights)/np.sum(weights)
+        saveResult(res, csv_submit)
+        return []
+    elif validy and probvalid:
+        reslist = []
+        for i in range(numtry):
+            weights = np.random.randint(1,100, probtest.shape[1])
+            validres = np.sum(probvalid * weights)/np.sum(weights)
+            logloss = evaluation(validy, validres)
+            reslist.append((validres, weights))
+        return reslist.sort()
+    else:
+        return []
 
-    if not len(validy) == 0:
-        valid_RF = calibrated_model.predict_proba(validX)
-        valid_XGB = calib_XGB.predict_proba(validX)
-        valid_MLP = model_MLP.predict_proba(validX)
+X, y, testX = get_data("../train.csv", "../test.csv") # change to correct path
+train_X, valid_X, train_y, valid_y = dex.data_validation(X, y)
+trainX, trainy = dex.get_preproc_train(train_X, train_y)
+validX, validy = dex.get_preproc_valid(valid_X, valid_y)
+testX = dex.get_preproc_test(test_X)
 
-    res_RF = calibrated_model.predict_proba(testX)
-    saveResult(res_RF, "../randomForest_submission.csv")
-    res_XGB = calib_XGB.predict_proba(testX)
-    saveResult(res_XGB, "../XGB_submission.csv")
-    res_MLP = model_MLP.predict_proba(testX)
-    saveResult(res_MLP, "../MLP_submission.csv")
-    # for x in [y / 100.0 for y in range(80, 99, 2)]:
-    #     combres = x * (0.5 * res_RF + 0.5 * res_XGB) + (1 - x) * res_MLP
-    #     if not len(validy) == 0:
-    #         pred_valid = x * (0.5 * valid_RF + 0.5 * valid_XGB) + (1 - x) * valid_MLP
-    #         print("Evaluation (kaggle) of validation set :", evaluation(validy, pred_valid))
-    #     saveResult(combres, "../combined_csv/combined_{:1.1f}RF_XGB_{:1.1f}MLP.csv".format(x, 1-x))
-    combres = 0.88 * (0.5 * res_RF + 0.5 * res_XGB) + (0.12) * res_MLP
-    saveResult(combres, "../combined_csv/combined_{:1.2f}RF_XGB_{:1.2f}MLP.csv".format(0.88, 0.12))
+RF_model = RandomForestClassifier(n_estimators=350, max_features=15, oob_score=True)
 
-RF_model = RandomForestClassifier(n_estimators=350, max_features=15, oob_score=True,
-                                  random_state=5)
-# XGB Jiaxin's parameters
-# XGB_model = xgb.XGBClassifier(learning_rate=0.01, n_estimators=700, gamma=0, max_depth=7,
-#                               min_child_weight=3, subsample=0.8, colsample_bytree=0.8,
-#                               n_jobs=100, random_state=27, objective='multi:softprob')
-XGB_model = xgb.XGBClassifier(max_depth=7, n_estimators=700, random_state=5,
-                              objective='multi:softprob', learning_rate=0.1, reg_alpha=0.003,
+XGB_model = xgb.XGBClassifier(max_depth=7, n_estimators=500, objective='multi:softprob',
+                              learning_rate=0.1, reg_alpha=0.003, n_jobs=3,
                               min_child_weight=3, subsample=0.8, gamma=0)
 
-MLP_model = MLPClassifier((75,), alpha=0.00001, learning_rate_init=0.0005, max_iter=14,
-                          tol=0.005, random_state=5)
-
-Adab_model = AdaBoostClassifier(n_estimators=80, learning_rate=0.25)
+MLP_model = MLPClassifier((75,), alpha=0.00001, learning_rate_init=0.005, max_iter=20,
+                          tol=0.005)
 
 ET_model = ExtraTreesClassifier(n_estimators=350)
 
-# classif_randomForest(RF_model)
-# classif_xgboost(XGB_model)
-# classif_MLP(MLP_model)
+run_single_models()
+averaging_models_by_two():
 
-# averaged_2models(RF_model, XGB_model, "RF", "XGB") # Best 0.3 RF 0.7XGB --> 0.447
-# averaged_2models(RF_model, MLP_model, "RF", "MLP") # Best 0.7 RF 0.3 MLP --> 0.493
-# averaged_2models(RF_model, Adab_model, "RF", "AdaBoost") # Best 0 Adaboost
-# averaged_2models(RF_model, ET_model, "RF", "Extra_tree") # best 0.2 RF 0.8 Extra_tree --> 0.482
+probas_XGB = pd.read_csv('../XGB_submission.csv').values[:, 1:]
+probas_MLP = pd.read_csv('../MLP_submission.csv').values[:, 1:]
+probas_RF = pd.read_csv('../RF_submission.csv').values[:, 1:]
+probas_ET = pd.read_csv('../ET_submission.csv').values[:, 1:]
 
-# averaged_2models(XGB_model, ET_model, "XGB", "ET") # Best with 0.7 XGB et 0.3 ET --> 0.443
-# averaged_2models(XGB_model, MLP_model, "XGB", "MLP") # Best with 0.8 XGB et 0.2 MLP --> 0.45
-averaged_2models(MLP_model, ET_model, "MLP", "ET") # Best with 0 MLP
+probas_test = [probas_XGB, probas_MLP, probas_RF, probas_ET]
 
-# averaged_3models(RF_model, XGB_model, MLP_model)
+probas_valid_XGB = pd.read_csv('../XGB_submission.csv').values[:, 1:]
+probas_valid_MLP = pd.read_csv('../MLP_submission.csv').values[:, 1:]
+probas_valid_RF = pd.read_csv('../RF_submission.csv').values[:, 1:]
+probas_valid_ET = pd.read_csv('../ET_submission.csv').values[:, 1:]
+
+probas_valid = [probas_valid_XGB, probas_valid_MLP, probas_valid_RF, probas_valid_ET]
+
+averaging_probas(validy, probas_valid, 50) # To do stochastic search on validation
+averaging_probas(probtest=probas_test[:3], weights=[0.6, 0.1, 0.3], csv_submit="../averaged_XGB_MLP_RF") # To save a csv file of averaged probabilities
