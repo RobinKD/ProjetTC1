@@ -345,8 +345,8 @@ def plot_tuning(data):
     input()
 
 
-X, y, test_X = dex.get_data("../train.csv", "../test.csv", 0.1)
-train_X, valid_X, train_y, valid_y = dex.data_validation(X, y)
+X, y, test_X = dex.get_data("../train.csv", "../test.csv")
+train_X, valid_X, train_y, valid_y = dex.data_validation(X, y, split=0.1)
 trainX, trainy = dex.get_preproc_train(train_X, train_y)
 validX, validy = dex.get_preproc_valid(valid_X, valid_y)
 testX = dex.get_preproc_test(test_X)
