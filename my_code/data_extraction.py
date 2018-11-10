@@ -17,14 +17,15 @@ def get_data(traincsv, testcsv):
 
 X, y, testX = get_data("../train.csv", "../test.csv")
 
-def data_validation(X, y):
+def data_validation(X, y, split=0.1):
     """
     Return train and validation data then train and validation labels
     to train models and test logloss locally
     Stratified with one bin to keep approximately the same class
     distribution in train and test
+    :param split: Portion of the data that is validation set
     """
-    Sss = StratifiedShuffleSplit(n_splits=1, test_size=0.1, random_state=5)
+    Sss = StratifiedShuffleSplit(n_splits=1, test_size=split, random_state=5)
     for train_index, test_index in Sss.split(X, y):
         # print("TRAIN:", train_index, "TEST:", test_index)
         trainX, validX = X[train_index], X[test_index]

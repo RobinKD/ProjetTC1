@@ -22,7 +22,7 @@ def saveResult(probas, filename = "../submission.csv"):
     Writing the probabilities computed in a csv file having
     the correct form for submission
     """
-    col = np.unique(dex.panda_dataset['target'].values)
+    col = np.unique(pd.read_csv("../train.csv")['target'].values)
     submission = pd.DataFrame(probas, columns=col)
     submission.index += 1
     submission.to_csv(filename, index=True, index_label='id')
