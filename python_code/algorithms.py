@@ -277,7 +277,8 @@ def main_submit():
     _ = averaging_probas(probtest=probas_test[1:3], weightlist=[1, 1], csv_submit="../averaged_MLP_ET")
     _ = averaging_probas(probtest=probas_test[2:], weightlist=[2, 9], csv_submit="../averaged_RF_ET")
 
-    _ = averaging_probas(probtest=probas_test[:3], weightlist=[9, 9, 7], csv_submit="../averaged_XGB_MLP_ET") # To save a csv file of averaged probabilities
+    _ = averaging_probas(probtest=probas_test[:3], weightlist=[9, 9, 7], csv_submit="../averaged_XGB_MLP_ET")
+    _ = averaging_probas(probtest=probas_test[:3], weightlist=[10, 9, 7], csv_submit="../averaged_XGB_MLP_ET_2")
 
 
 main_test()
