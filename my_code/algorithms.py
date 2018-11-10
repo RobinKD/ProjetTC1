@@ -220,19 +220,26 @@ def main_test():
 
     run_single_models(trainX, validX, trainy, validy, testX)
 
-    probas_XGB = pd.read_csv('../xgboost_submission.csv').values[:, 1:]
-    probas_MLP = pd.read_csv('../MLP_submission.csv').values[:, 1:]
-    probas_RF = pd.read_csv('../randomForest_submission.csv').values[:, 1:]
-    probas_ET = pd.read_csv('../ET_submission.csv').values[:, 1:]
-
-    probas_test = [probas_XGB, probas_MLP, probas_RF, probas_ET]
-
     probas_valid_XGB = pd.read_csv('../xgboost_submission_valid.csv').values[:, 1:]
     probas_valid_MLP = pd.read_csv('../MLP_submission_valid.csv').values[:, 1:]
     probas_valid_RF = pd.read_csv('../randomForest_submission_valid.csv').values[:, 1:]
     probas_valid_ET = pd.read_csv('../ET_submission_valid.csv').values[:, 1:]
 
     probas_valid = [probas_valid_XGB, probas_valid_MLP, probas_valid_RF, probas_valid_ET]
+
+    # Stochastic research 2 models
+    results = averaging_probas(validy, probas_valid[:2], 250) 
+    print("XGB, MLP", results[:10])
+    results = averaging_probas(validy, [probas_valid_XGB,  probas_valid_ET], 250)
+    print("XGB, ET", results[:10])
+    results = averaging_probas(validy, [probas_valid_XGB, probas_valid_RF], 250)
+    print("XGB, RF", results[:10])
+    results = averaging_probas(validy, probas_valid[1:3], 250)
+    print("MLP, RF", results[:10])
+    results = averaging_probas(validy, [probas_valid_MLP, probas_valid_ET], 250)
+    print("MLP, ET", results[:10])
+    results = averaging_probas(validy, probas_valid[2:], 1000)
+    print("ET, RF", results[:10])
 
     # Stochastic research 3 models
     results = averaging_probas(validy, probas_valid[:3], 1000) 
@@ -254,7 +261,7 @@ def main_submit():
     trainX, trainy = dex.get_preproc_train(train_X, train_y)
     testX = dex.get_preproc_test(test_X)
 
-    # run_single_models(trainX, valid_X, trainy, valid_y, testX)
+    run_single_models(trainX, valid_X, trainy, valid_y, testX)
 
     probas_XGB = pd.read_csv('../XGB_submission.csv').values[:, 1:]
     probas_MLP = pd.read_csv('../MLP_submission.csv').values[:, 1:]
@@ -263,8 +270,15 @@ def main_submit():
 
     probas_test = [probas_XGB, probas_MLP, probas_ET, probas_RF]
 
+    _ = averaging_probas(probtest=probas_test[:2], weightlist=[4, 3], csv_submit="../averaged_XGB_MLP")
+    _ = averaging_probas(probtest=[probas_XGB, probas_ET], weightlist=[8, 6], csv_submit="../averaged_XGB_ET")
+    _ = averaging_probas(probtest=[probas_XGB, probas_RF], weightlist=[8, 3.5], csv_submit="../averaged_XGB_RF")
+    _ = averaging_probas(probtest=[probas_MLP, probas_RF], weightlist=[7.5, 6], csv_submit="../averaged_MLP_RF")
+    _ = averaging_probas(probtest=probas_test[1:3], weightlist=[1, 1], csv_submit="../averaged_MLP_ET")
+    _ = averaging_probas(probtest=probas_test[2:], weightlist=[2, 9], csv_submit="../averaged_RF_ET")
+
     _ = averaging_probas(probtest=probas_test[:3], weightlist=[9, 9, 7], csv_submit="../averaged_XGB_MLP_ET") # To save a csv file of averaged probabilities
 
 
-# main_test()
+main_test()
 main_submit()
